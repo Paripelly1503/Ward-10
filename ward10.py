@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Ward 10 Voter Search App", layout="wide")
 
@@ -22,7 +23,7 @@ except Exception as e:
 # -----------------------
 df.columns = df.columns.str.strip()
 
-# Auto-rename Epic column
+# Auto-detect EPIC column
 for col in df.columns:
     if "epic" in col.lower():
         df.rename(columns={col: "Epic"}, inplace=True)
@@ -30,7 +31,7 @@ for col in df.columns:
 # -----------------------
 # REQUIRED COLUMNS
 # -----------------------
-required_columns = ["Name", "Relation Name", "Age", "Door No.", "Epic"]
+required_columns = ["Name", "Relation Name", "Age", "Door No.", "Epic", "Sex"]
 
 missing = [c for c in required_columns if c not in df.columns]
 
@@ -48,6 +49,24 @@ for col in df.columns:
 # TOTAL RECORDS
 # -----------------------
 st.markdown(f"### Total Records: {len(df)}")
+
+# -----------------------
+# PIE CHART (GENDER)
+# -----------------------
+st.subheader("👥 Gender Distribution")
+
+gender_counts = df["Sex"].value_counts()
+
+fig, ax = plt.subplots()
+ax.pie(
+    gender_counts,
+    labels=gender_counts.index,
+    autopct="%1.1f%%",
+    startangle=90
+)
+ax.axis("equal")
+
+st.pyplot(fig)
 
 # -----------------------
 # SEARCH
