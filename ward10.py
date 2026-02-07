@@ -1,80 +1,85 @@
 import streamlit as st
 import pandas as pd
 
-# ------------------------------
+# ---------------------------
 # PAGE CONFIG
-# ------------------------------
+# ---------------------------
 st.set_page_config(
-    page_title="Ward 10 Voters Dashboard",
+    page_title="Ward 10 Voter Search App",
     layout="wide"
 )
 
-st.title("🗳️ Ward 10 Voters Dashboard")
+st.title("🗳️ Ward 10 Voter Search App")
 
-# ------------------------------
-# LOAD EXCEL
-# ------------------------------
+# ---------------------------
+# LOAD DATA
+# ---------------------------
 @st.cache_data
 def load_data():
     return pd.read_excel("voters_data.xlsx")
 
 try:
     df = load_data()
-    df.columns = df.columns.str.strip()   # remove hidden spaces
+    df.columns = df.columns.str.strip()
     st.success("Excel Loaded Successfully")
-except Exception as e:
-    st.error("Excel file not found or error reading file.")
+except:
+    st.error("voters_data.xlsx not found")
     st.stop()
 
-# ------------------------------
-# SHOW TOTAL RECORDS
-# ------------------------------
+# ---------------------------
+# TOTAL RECORDS
+# ---------------------------
 st.subheader(f"Total Records: {len(df)}")
 
-# ------------------------------
+# ---------------------------
 # SEARCH BOX
-# ------------------------------
-search = st.text_input(
+# ---------------------------
+query = st.text_input(
     "Enter Name / Relation Name / Door Number",
     placeholder="Type Name or Door Number and press Enter"
 ).lower()
 
-# ------------------------------
-# FILTER LOGIC
-# ------------------------------
-if search:
-    results = df[
-        df["Name"].astype(str).str.lower().str.contains(search) |
-        df["Relation Name"].astype(str).str.lower().str.contains(search) |
-        df["Door No."].astype(str).str.lower().str.contains(search)
+if query:
+    filtered = df[
+        df["Name"].astype(str).str.lower().str.contains(query) |
+        df["Relation Name"].astype(str).str.lower().str.contains(query) |
+        df["Door No."].astype(str).str.lower().str.contains(query)
     ]
 else:
-    results = df
+    filtered = df
 
-# ------------------------------
+# ---------------------------
 # DISPLAY TABLE
-# ------------------------------
-st.dataframe(results, use_container_width=True)
+# ---------------------------
+st.dataframe(filtered, use_container_width=True)
 
-# ------------------------------
-# GENDER DISTRIBUTION
-# ------------------------------
-st.subheader("Gender Distribution")
+# ---------------------------
+# PIE CHART (MALE vs FEMALE)
+# ---------------------------
+st.subheader("Male vs Female Percentage")
+
 gender_counts = df["Sex"].value_counts()
-st.bar_chart(gender_counts)
 
-# ------------------------------
-# AGE DISTRIBUTION
-# ------------------------------
-st.subheader("Age Distribution")
-st.histogram = st.bar_chart(df["Age"].value_counts().sort_index())
+pie_df = pd.DataFrame({
+    "Gender": gender_counts.index,
+    "Count": gender_counts.values
+})
 
-# ------------------------------
-# DOWNLOAD FILTERED DATA
-# ------------------------------
+st.pyplot(
+    pie_df.set_index("Gender").plot.pie(
+        y="Count",
+        autopct="%1.1f%%",
+        legend=False,
+        figsize=(4,4)
+    ).figure
+)
+
+# ---------------------------
+# DOWNLOAD BUTTON
+# ---------------------------
 st.download_button(
-    label="Download Filtered Data",
-    data=results.to_csv(index=False),
-    file_name="filtered_voters_data.csv",
+    "Download Filtered Data",
+    filtered.to_csv(index=False),
+    file_name="filtered_voters.csv",
     mime="text/csv"
 )
