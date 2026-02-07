@@ -4,82 +4,70 @@ import pandas as pd
 # ---------------------------
 # PAGE CONFIG
 # ---------------------------
-st.set_page_config(
-    page_title="Ward 10 Voter Search App",
-    layout="wide"
-)
+st.set_page_config(page_title="Ward 10 Voter Search", layout="wide")
 
 st.title("🗳️ Ward 10 Voter Search App")
 
 # ---------------------------
-# LOAD DATA
+# LOAD EXCEL
 # ---------------------------
-@st.cache_data
-def load_data():
-    return pd.read_excel("voters_data.xlsx")
+FILE_PATH = "voters_data.xlsx"   # Excel must be in same GitHub folder
 
 try:
-    df = load_data()
-    df.columns = df.columns.str.strip()
+    df = pd.read_excel(FILE_PATH)
     st.success("Excel Loaded Successfully")
-except:
-    st.error("voters_data.xlsx not found")
+except Exception as e:
+    st.error("Unable to load Excel file")
     st.stop()
+
+# ---------------------------
+# KEEP ONLY REQUIRED COLUMNS
+# ---------------------------
+required_columns = [
+    "Name",
+    "Relation Name",
+    "Age",
+    "Door No.",
+    "Epic"
+]
+
+df = df[required_columns]
+
+# Convert everything to string for safe searching
+for col in df.columns:
+    df[col] = df[col].astype(str)
 
 # ---------------------------
 # TOTAL RECORDS
 # ---------------------------
-st.subheader(f"Total Records: {len(df)}")
+st.markdown(f"### Total Records: {len(df)}")
+
+st.divider()
 
 # ---------------------------
 # SEARCH BOX
 # ---------------------------
-query = st.text_input(
-    "Enter Name / Relation Name / Door Number",
-    placeholder="Type Name or Door Number and press Enter"
-).lower()
+search = st.text_input(
+    "🔍 Search by Name / Relation Name / Door Number / Epic"
+)
 
-if query:
-    filtered = df[
-        df["Name"].astype(str).str.lower().str.contains(query) |
-        df["Relation Name"].astype(str).str.lower().str.contains(query) |
-        df["Door No."].astype(str).str.lower().str.contains(query)
-    ]
+# ---------------------------
+# FILTER LOGIC
+# ---------------------------
+if search:
+
+    mask = (
+        df["Name"].str.contains(search, case=False, na=False) |
+        df["Relation Name"].str.contains(search, case=False, na=False) |
+        df["Door No."].str.contains(search, case=False, na=False) |
+        df["Epic"].str.contains(search, case=False, na=False)
+    )
+
+    filtered = df[mask]
+
+    st.success(f"{len(filtered)} Records Found")
+
+    st.dataframe(filtered, use_container_width=True)
+
 else:
-    filtered = df
-
-# ---------------------------
-# DISPLAY TABLE
-# ---------------------------
-st.dataframe(filtered, use_container_width=True)
-
-# ---------------------------
-# PIE CHART (MALE vs FEMALE)
-# ---------------------------
-st.subheader("Male vs Female Percentage")
-
-gender_counts = df["Sex"].value_counts()
-
-pie_df = pd.DataFrame({
-    "Gender": gender_counts.index,
-    "Count": gender_counts.values
-})
-
-st.pyplot(
-    pie_df.set_index("Gender").plot.pie(
-        y="Count",
-        autopct="%1.1f%%",
-        legend=False,
-        figsize=(4,4)
-    ).figure
-)
-
-# ---------------------------
-# DOWNLOAD BUTTON
-# ---------------------------
-st.download_button(
-    "Download Filtered Data",
-    filtered.to_csv(index=False),
-    file_name="filtered_voters.csv",
-    mime="text/csv"
-)
+    st.info("👆 Start typing Name / Door Number / Epic to search")
