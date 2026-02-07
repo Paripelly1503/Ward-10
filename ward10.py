@@ -1,100 +1,85 @@
 import streamlit as st
 import pandas as pd
 
-# ---------------------------
-# PAGE SETUP
-# ---------------------------
-st.set_page_config(page_title="Ward 10 Voter Search", layout="wide")
+# -----------------------------
+# PAGE SETTINGS
+# -----------------------------
+st.set_page_config(page_title="Ward 10 Voter Search App", layout="wide")
+
 st.title("🗳️ Ward 10 Voter Search App")
 
-# ---------------------------
+# -----------------------------
 # LOAD EXCEL
-# ---------------------------
-FILE_PATH = "voters_data.xlsx"
+# -----------------------------
+EXCEL_FILE = "voters_data.xlsx"
 
 try:
-    df = pd.read_excel(FILE_PATH)
+    df = pd.read_excel(EXCEL_FILE)
     st.success("Excel Loaded Successfully")
-except:
-    st.error("Cannot load Excel file")
+except Exception as e:
+    st.error(f"Error loading Excel: {e}")
     st.stop()
 
-# ---------------------------
-# CLEAN COLUMN NAMES
-# ---------------------------
-df.columns = df.columns.str.strip().str.lower()
+# -----------------------------
+# REQUIRED COLUMNS
+# -----------------------------
+required_columns = [
+    "Name",
+    "Relation Name",
+    "Age",
+    "Door No.",
+    "Epic"
+]
 
-# ---------------------------
-# COLUMN MAPPING
-# ---------------------------
-column_map = {}
+missing = [col for col in required_columns if col not in df.columns]
 
-for col in df.columns:
-
-    c = col.lower()
-
-    if "name" == c:
-        column_map[col] = "Name"
-
-    elif "relation" in c:
-        column_map[col] = "Relation Name"
-
-    elif "age" in c:
-        column_map[col] = "Age"
-
-    elif "door" in c:
-        column_map[col] = "Door No."
-
-    elif "epic" in c or "voter" in c or "elector" in c:
-        column_map[col] = "Epic"
-
-df = df.rename(columns=column_map)
-
-# ---------------------------
-# REQUIRED COLUMNS CHECK
-# ---------------------------
-needed = ["Name", "Relation Name", "Age", "Door No.", "Epic"]
-
-missing = [c for c in needed if c not in df.columns]
 if missing:
     st.error(f"Missing columns in Excel: {missing}")
     st.stop()
 
-df = df[needed]
+# Keep only needed columns
+df = df[required_columns]
 
-# Convert all to string
+# Convert everything to string (important)
 for col in df.columns:
     df[col] = df[col].astype(str)
 
-# ---------------------------
+# -----------------------------
 # TOTAL RECORDS
-# ---------------------------
+# -----------------------------
 st.markdown(f"### Total Records: {len(df)}")
-st.divider()
 
-# ---------------------------
+# -----------------------------
 # SEARCH BOX
-# ---------------------------
+# -----------------------------
 query = st.text_input(
     "🔍 Search by Name / Relation Name / Door Number / Epic"
 )
 
-# ---------------------------
-# FILTER
-# ---------------------------
+# -----------------------------
+# FILTER LOGIC
+# -----------------------------
 if query:
 
-    mask = (
-        df["Name"].str.contains(query, case=False) |
-        df["Relation Name"].str.contains(query, case=False) |
-        df["Door No."].str.contains(query, case=False) |
-        df["Epic"].str.contains(query, case=False)
+    filtered = df[
+        df["Name"].fillna("").str.contains(query, case=False) |
+        df["Relation Name"].fillna("").str.contains(query, case=False) |
+        df["Door No."].fillna("").str.contains(query, case=False) |
+        df["Epic"].fillna("").str.contains(query, case=False)
+    ]
+
+    st.markdown(f"### Records Found: {len(filtered)}")
+
+    st.dataframe(filtered, use_container_width=True)
+
+    # Download Button
+    csv = filtered.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        "⬇️ Download Filtered Data",
+        csv,
+        "ward10_filtered.csv",
+        "text/csv"
     )
 
-    result = df[mask]
-
-    st.success(f"{len(result)} Records Found")
-    st.dataframe(result, use_container_width=True)
-
 else:
-    st.info("👆 Start typing Name / Door Number / Epic")
+    st.info("Start typing Name, Relation Name, Door Number or Epic")
