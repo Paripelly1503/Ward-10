@@ -1,79 +1,72 @@
 import streamlit as st
 import pandas as pd
 
-# -----------------------------
-# PAGE SETTINGS
-# -----------------------------
 st.set_page_config(page_title="Ward 10 Voter Search App", layout="wide")
 
 st.title("🗳️ Ward 10 Voter Search App")
 
-# -----------------------------
+# -----------------------
 # LOAD EXCEL
-# -----------------------------
-EXCEL_FILE = "voters_data.xlsx"
+# -----------------------
+FILE = "voters_data.xlsx"
 
 try:
-    df = pd.read_excel(EXCEL_FILE)
+    df = pd.read_excel(FILE)
     st.success("Excel Loaded Successfully")
 except Exception as e:
-    st.error(f"Error loading Excel: {e}")
+    st.error(f"Excel load failed: {e}")
     st.stop()
 
-# -----------------------------
-# REQUIRED COLUMNS
-# -----------------------------
-required_columns = [
-    "Name",
-    "Relation Name",
-    "Age",
-    "Door No.",
-    "Epic"
-]
+# -----------------------
+# CLEAN COLUMN NAMES
+# -----------------------
+df.columns = df.columns.str.strip()
 
-missing = [col for col in required_columns if col not in df.columns]
+# Auto-rename Epic column
+for col in df.columns:
+    if "epic" in col.lower():
+        df.rename(columns={col: "Epic"}, inplace=True)
+
+# -----------------------
+# REQUIRED COLUMNS
+# -----------------------
+required_columns = ["Name", "Relation Name", "Age", "Door No.", "Epic"]
+
+missing = [c for c in required_columns if c not in df.columns]
 
 if missing:
     st.error(f"Missing columns in Excel: {missing}")
     st.stop()
 
-# Keep only needed columns
 df = df[required_columns]
 
-# Convert everything to string (important)
+# Convert all to string
 for col in df.columns:
     df[col] = df[col].astype(str)
 
-# -----------------------------
+# -----------------------
 # TOTAL RECORDS
-# -----------------------------
+# -----------------------
 st.markdown(f"### Total Records: {len(df)}")
 
-# -----------------------------
-# SEARCH BOX
-# -----------------------------
-query = st.text_input(
-    "🔍 Search by Name / Relation Name / Door Number / Epic"
-)
+# -----------------------
+# SEARCH
+# -----------------------
+query = st.text_input("🔍 Search by Name / Relation Name / Door Number / Epic")
 
-# -----------------------------
-# FILTER LOGIC
-# -----------------------------
 if query:
 
-    filtered = df[
-        df["Name"].fillna("").str.contains(query, case=False) |
-        df["Relation Name"].fillna("").str.contains(query, case=False) |
-        df["Door No."].fillna("").str.contains(query, case=False) |
-        df["Epic"].fillna("").str.contains(query, case=False)
+    result = df[
+        df["Name"].str.contains(query, case=False, na=False) |
+        df["Relation Name"].str.contains(query, case=False, na=False) |
+        df["Door No."].str.contains(query, case=False, na=False) |
+        df["Epic"].str.contains(query, case=False, na=False)
     ]
 
-    st.markdown(f"### Records Found: {len(filtered)}")
+    st.markdown(f"### Records Found: {len(result)}")
+    st.dataframe(result, use_container_width=True)
 
-    st.dataframe(filtered, use_container_width=True)
-
-    # Download Button
-    csv = filtered.to_csv(index=False).encode("utf-8")
+    csv = result.to_csv(index=False).encode("utf-8")
     st.download_button(
         "⬇️ Download Filtered Data",
         csv,
