@@ -2,38 +2,58 @@ import streamlit as st
 import pandas as pd
 
 # ---------------------------
-# PAGE CONFIG
+# PAGE SETUP
 # ---------------------------
 st.set_page_config(page_title="Ward 10 Voter Search", layout="wide")
-
 st.title("🗳️ Ward 10 Voter Search App")
 
 # ---------------------------
 # LOAD EXCEL
 # ---------------------------
-FILE_PATH = "voters_data.xlsx"   # Excel must be in same GitHub folder
+FILE_PATH = "voters_data.xlsx"
 
 try:
     df = pd.read_excel(FILE_PATH)
     st.success("Excel Loaded Successfully")
-except Exception as e:
-    st.error("Unable to load Excel file")
+except:
+    st.error("Cannot load Excel file")
     st.stop()
 
 # ---------------------------
-# KEEP ONLY REQUIRED COLUMNS
+# CLEAN COLUMN NAMES
 # ---------------------------
-required_columns = [
-    "Name",
-    "Relation Name",
-    "Age",
-    "Door No.",
-    "Epic"
-]
+df.columns = df.columns.str.strip().str.lower()
 
-df = df[required_columns]
+# ---------------------------
+# COLUMN MAPPING
+# ---------------------------
+column_map = {
+    "name": "Name",
+    "relation name": "Relation Name",
+    "age": "Age",
+    "door no.": "Door No.",
+    "door no": "Door No.",
+    "door number": "Door No.",
+    "epic": "Epic",
+    "epic no": "Epic",
+    "epic number": "Epic"
+}
 
-# Convert everything to string for safe searching
+df = df.rename(columns=column_map)
+
+# ---------------------------
+# REQUIRED COLUMNS CHECK
+# ---------------------------
+needed = ["Name", "Relation Name", "Age", "Door No.", "Epic"]
+
+missing = [c for c in needed if c not in df.columns]
+if missing:
+    st.error(f"Missing columns in Excel: {missing}")
+    st.stop()
+
+df = df[needed]
+
+# Convert all to string
 for col in df.columns:
     df[col] = df[col].astype(str)
 
@@ -41,33 +61,31 @@ for col in df.columns:
 # TOTAL RECORDS
 # ---------------------------
 st.markdown(f"### Total Records: {len(df)}")
-
 st.divider()
 
 # ---------------------------
 # SEARCH BOX
 # ---------------------------
-search = st.text_input(
+query = st.text_input(
     "🔍 Search by Name / Relation Name / Door Number / Epic"
 )
 
 # ---------------------------
-# FILTER LOGIC
+# FILTER
 # ---------------------------
-if search:
+if query:
 
     mask = (
-        df["Name"].str.contains(search, case=False, na=False) |
-        df["Relation Name"].str.contains(search, case=False, na=False) |
-        df["Door No."].str.contains(search, case=False, na=False) |
-        df["Epic"].str.contains(search, case=False, na=False)
+        df["Name"].str.contains(query, case=False) |
+        df["Relation Name"].str.contains(query, case=False) |
+        df["Door No."].str.contains(query, case=False) |
+        df["Epic"].str.contains(query, case=False)
     )
 
-    filtered = df[mask]
+    result = df[mask]
 
-    st.success(f"{len(filtered)} Records Found")
-
-    st.dataframe(filtered, use_container_width=True)
+    st.success(f"{len(result)} Records Found")
+    st.dataframe(result, use_container_width=True)
 
 else:
-    st.info("👆 Start typing Name / Door Number / Epic to search")
+    st.info("👆 Start typing Name / Door Number / Epic")
