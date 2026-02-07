@@ -1,95 +1,76 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 
-# -----------------------------
-# Page Settings
-# -----------------------------
-st.set_page_config(page_title="Ward 10 Voter Dashboard", layout="wide")
+st.set_page_config(page_title="Ward 10 Dashboard", layout="wide")
 
-st.title("🗳 Ward 10 Voters Search Dashboard")
+st.title("Ward 10 Voters Dashboard")
 
-# -----------------------------
-# Load Excel
-# -----------------------------
+# -----------------------
+# Load Data
+# -----------------------
 @st.cache_data
 def load_data():
-    return pd.read_excel("voters_data.xlsx")
+    df = pd.read_excel("voters_data.xlsx")
+
+    # Clean column names
+    df.columns = (
+        df.columns
+        .str.strip()
+        .str.lower()
+        .str.replace(" ", "_")
+    )
+
+    return df
 
 df = load_data()
 
-# -----------------------------
-# Sidebar Search
-# -----------------------------
-st.sidebar.header("Search Filters")
+# -----------------------
+# Rename to standard form
+# -----------------------
+df = df.rename(columns={
+    "name": "Name",
+    "relation_name": "Relation Name",
+    "relation_type": "Relation Type",
+    "age": "Age",
+    "sex": "Sex",
+    "door_no.": "Door No",
+    "door_no": "Door No",
+    "epic_no": "Epic No"
+})
 
-name_search = st.sidebar.text_input("Search Name")
-relation_search = st.sidebar.text_input("Search Relation")
-door_search = st.sidebar.text_input("Search Door Number")
-voterid_search = st.sidebar.text_input("Search Voter ID")
+st.success("Excel Loaded Successfully")
 
-filtered = df.copy()
+# -----------------------
+# Search
+# -----------------------
+search = st.text_input("Search Name / Relation / Door / Epic")
 
-if name_search:
-    filtered = filtered[filtered["Name"].str.contains(name_search, case=False, na=False)]
+if search:
+    result = df[
+        df.astype(str)
+        .apply(lambda row: row.str.contains(search, case=False).any(), axis=1)
+    ]
+else:
+    result = df
 
-if relation_search:
-    filtered = filtered[filtered["Relation"].str.contains(relation_search, case=False, na=False)]
+st.subheader(f"Total Records: {len(result)}")
+st.dataframe(result, use_container_width=True)
 
-if door_search:
-    filtered = filtered[filtered["Door Number"].astype(str).str.contains(door_search)]
-
-if voterid_search:
-    filtered = filtered[filtered["Voter ID"].astype(str).str.contains(voterid_search)]
-
-# -----------------------------
-# Results
-# -----------------------------
-st.subheader("📋 Search Results")
-
-st.write(f"Total Records Found: {len(filtered)}")
-
-st.dataframe(filtered, use_container_width=True)
-
-# -----------------------------
-# Download Button
-# -----------------------------
-st.download_button(
-    label="⬇ Download Search Results",
-    data=filtered.to_csv(index=False),
-    file_name="filtered_voters.csv",
-    mime="text/csv"
-)
-
-# -----------------------------
+# -----------------------
 # Charts
-# -----------------------------
-st.subheader("📊 Statistics")
+# -----------------------
+st.subheader("Gender Distribution")
+st.bar_chart(df["Sex"].value_counts())
 
-col1, col2 = st.columns(2)
+st.subheader("Age Distribution")
+st.bar_chart(df["Age"].value_counts().sort_index())
 
-# Gender Pie
-with col1:
-    gender_counts = df["Gender"].value_counts()
-    fig1, ax1 = plt.subplots()
-    ax1.pie(gender_counts, labels=gender_counts.index, autopct="%1.1f%%")
-    ax1.set_title("Gender Distribution")
-    st.pyplot(fig1)
-
-# Age Groups
-with col2:
-    bins = [0,18,30,45,60,120]
-    labels = ["<18","18-30","31-45","46-60","60+"]
-    df["Age Group"] = pd.cut(df["Age"], bins=bins, labels=labels)
-    age_counts = df["Age Group"].value_counts().sort_index()
-
-    fig2, ax2 = plt.subplots()
-    ax2.bar(age_counts.index.astype(str), age_counts.values)
-    ax2.set_title("Age Group Distribution")
-    st.pyplot(fig2)
-
-# -----------------------------
-# Footer
-# -----------------------------
-st.markdown("---")
-st.markdown("Developed for Ward 10 Voter Data Analysis")
+# -----------------------
+# Download
+# -----------------------
+st.download_button(
+    "Download Filtered Data",
+    result.to_csv(index=False),
+    "ward10_filtered.csv",
+    "text/csv"
+)
