@@ -1,76 +1,80 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Ward 10 Dashboard", layout="wide")
+# ------------------------------
+# PAGE CONFIG
+# ------------------------------
+st.set_page_config(
+    page_title="Ward 10 Voters Dashboard",
+    layout="wide"
+)
 
-st.title("Ward 10 Voters Dashboard")
+st.title("🗳️ Ward 10 Voters Dashboard")
 
-# -----------------------
-# Load Data
-# -----------------------
+# ------------------------------
+# LOAD EXCEL
+# ------------------------------
 @st.cache_data
 def load_data():
-    df = pd.read_excel("voters_data.xlsx")
+    return pd.read_excel("voters_data.xlsx")
 
-    # Clean column names
-    df.columns = (
-        df.columns
-        .str.strip()
-        .str.lower()
-        .str.replace(" ", "_")
-    )
+try:
+    df = load_data()
+    df.columns = df.columns.str.strip()   # remove hidden spaces
+    st.success("Excel Loaded Successfully")
+except Exception as e:
+    st.error("Excel file not found or error reading file.")
+    st.stop()
 
-    return df
+# ------------------------------
+# SHOW TOTAL RECORDS
+# ------------------------------
+st.subheader(f"Total Records: {len(df)}")
 
-df = load_data()
+# ------------------------------
+# SEARCH BOX
+# ------------------------------
+search = st.text_input(
+    "Enter Name / Relation Name / Door Number",
+    placeholder="Type Name or Door Number and press Enter"
+).lower()
 
-# -----------------------
-# Rename to standard form
-# -----------------------
-df = df.rename(columns={
-    "name": "Name",
-    "relation_name": "Relation Name",
-    "relation_type": "Relation Type",
-    "age": "Age",
-    "sex": "Sex",
-    "door_no.": "Door No",
-    "door_no": "Door No",
-    "epic_no": "Epic No"
-})
-
-st.success("Excel Loaded Successfully")
-
-# -----------------------
-# Search
-# -----------------------
-search = st.text_input("Search Name / Relation / Door / Epic")
-
+# ------------------------------
+# FILTER LOGIC
+# ------------------------------
 if search:
-    result = df[
-        df.astype(str)
-        .apply(lambda row: row.str.contains(search, case=False).any(), axis=1)
+    results = df[
+        df["Name"].astype(str).str.lower().str.contains(search) |
+        df["Relation Name"].astype(str).str.lower().str.contains(search) |
+        df["Door No."].astype(str).str.lower().str.contains(search)
     ]
 else:
-    result = df
+    results = df
 
-st.subheader(f"Total Records: {len(result)}")
-st.dataframe(result, use_container_width=True)
+# ------------------------------
+# DISPLAY TABLE
+# ------------------------------
+st.dataframe(results, use_container_width=True)
 
-# -----------------------
-# Charts
-# -----------------------
+# ------------------------------
+# GENDER DISTRIBUTION
+# ------------------------------
 st.subheader("Gender Distribution")
-st.bar_chart(df["Sex"].value_counts())
+gender_counts = df["Sex"].value_counts()
+st.bar_chart(gender_counts)
 
+# ------------------------------
+# AGE DISTRIBUTION
+# ------------------------------
 st.subheader("Age Distribution")
-st.bar_chart(df["Age"].value_counts().sort_index())
+st.histogram = st.bar_chart(df["Age"].value_counts().sort_index())
 
-# -----------------------
-# Download
-# -----------------------
+# ------------------------------
+# DOWNLOAD FILTERED DATA
+# ------------------------------
 st.download_button(
-    "Download Filtered Data",
-    result.to_csv(index=False),
-    "ward10_filtered.csv",
-    "text/csv"
+    label="Download Filtered Data",
+    data=results.to_csv(index=False),
+    file_name="filtered_voters_data.csv",
+    mime="text/csv"
 )
