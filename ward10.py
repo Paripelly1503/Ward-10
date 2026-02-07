@@ -27,17 +27,26 @@ df.columns = df.columns.str.strip().str.lower()
 # ---------------------------
 # COLUMN MAPPING
 # ---------------------------
-column_map = {
-    "name": "Name",
-    "relation name": "Relation Name",
-    "age": "Age",
-    "door no.": "Door No.",
-    "door no": "Door No.",
-    "door number": "Door No.",
-    "epic": "Epic",
-    "epic no": "Epic",
-    "epic number": "Epic"
-}
+column_map = {}
+
+for col in df.columns:
+
+    c = col.lower()
+
+    if "name" == c:
+        column_map[col] = "Name"
+
+    elif "relation" in c:
+        column_map[col] = "Relation Name"
+
+    elif "age" in c:
+        column_map[col] = "Age"
+
+    elif "door" in c:
+        column_map[col] = "Door No."
+
+    elif "epic" in c or "voter" in c or "elector" in c:
+        column_map[col] = "Epic"
 
 df = df.rename(columns=column_map)
 
